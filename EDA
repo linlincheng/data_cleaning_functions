@@ -1,0 +1,31 @@
+
+####correlation plot:
+library(corrplot)
+corrplot(cor(df.good.cases, use = "pairwise.complete.obs"), order = "hclust")
+
+
+####Boxplot
+# Change box plot colors by groups
+p<-ggplot(ToothGrowth, aes(x=dose, y=len, fill=dose)) +
+  geom_boxplot()
+p
+
+# Change the position
+p<-ggplot(ToothGrowth, aes(x=dose, y=len, fill=supp)) +
+  geom_boxplot(position=position_dodge(1))
+p
+
+
+###density
+geom_density()
+
+
+###histogram
+geom_histogram()
+
+
+###pie chart
+coord_polar()
+
+##bar cahrt
+geom_bar()
