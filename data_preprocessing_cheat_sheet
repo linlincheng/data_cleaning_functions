@@ -1,0 +1,264 @@
+#data cleaning functions
+#@Linlin Cheng
+
+
+s = 'This\\is\\a\\string\to\be splitted!'
+s1 = 'This is another string to be splitted'
+###############################################################
+#string split: 
+strsplit(s, ' ', fixed = T) #output one list per string, need to unlist()
+#ino order to access items
+# [[1]]
+# [1] "This"      "is"        "a"         "string"    "to"        "be"       
+# [7] "splitted!"
+unlist(strsplit(s, ' ', fixed = T)) #now elements can be accessed
+# [1] "This"      "is"        "a"         "string"    "to"        "be"       
+# [7] "splitted!"
+
+#split by al punc and space
+strsplit(test_2, split=c("[:punct:]","[:space:]"))[[1]]
+
+##notes:
+##1. '.' serves as place holder: need to set fixed = T if want to split at '.'
+##2. 
+###############################################################
+#check for identical objects:
+identical(x, y) #returns a boolean
+###############################################################
+#change structure, add/drop column in data.frame:
+transform()
+#example:
+daltons = transform( daltons
+                     , birth = as.numeric(birth) #change class 
+                     , death = birth +80 #add new column
+)
+
+###############################################################
+#manipulate dates with super cool lubridate
+###############################################################
+library(lubridate)
+dates <- c("15/02/2013", "15 Feb 13", "It happened on 15 02 '13")
+for_dates<-dmy(dates)
+for_dates
+#[1] "2013-02-15" "2013-02-15" "2013-02-15"
+month(for_dates)
+#[1] 2 2 2
+
+###############################################################
+#string manipulation:
+###############################################################
+library(stringr)
+str_trim(" hello world ")#removing white spaces
+str_trim(" hello world ", side = "left") # from right
+
+#string extraction,a more complicated example:
+strings <- c(
+  "apple", 
+  "219 733 8965", 
+  "329-293-8753", 
+  "Work: 579-499-7527; Home: 543.355.3679"
+)
+phone <- "([2-9][0-9]{2})[- .]([0-9]{3})[- .]([0-9]{4})"
+
+str_detect(strings, phone)
+#> [1] FALSE  TRUE  TRUE  TRUE
+
+str_extract_all(strings, phone, simplify = TRUE)
+#>      [,1]           [,2]          
+#> [1,] ""             ""            
+#> [2,] "219 733 8965" ""            
+#> [3,] "329-293-8753" ""            
+#> [4,] "579-499-7527" "543.355.3679"
+
+###############################################################
+#Approximate matching(fuzzy matching)
+#Example one: from library(stringr)
+
+## gender
+## 1 M
+## 2 male
+## 3 Female
+## 4 fem.
+
+gender <- c("M", "male ", "Female", "fem.")
+grepl("m", gender, ignore.case = T)
+## [1] TRUE TRUE TRUE TRUE
+grep("m", gender)
+## [1] 2 3 4
+
+#.  place holder, any character
+#\ 
+#|
+#( ) exact expression
+#[ match any of the set[ ]
+#{ 
+#^ begining of the string, [^] negating the set
+#$ end of the string
+#* zero or more
+#+ one or more of the previous 
+#? place holder for optional, colou?r
+#\w, word, \W not word
+#\s, space, \S not space
+#\d, digit, \D not digit
+
+codes <- c("male", "female")
+D <- adist(gender, codes)
+colnames(D) <- codes
+rownames(D) <- gender
+D
+# male female
+# M         4      6
+# male      1      3
+# Female    2      1
+# fem.      4      3
+i <- apply(D, 1, which.min) #find the closest to codes
+tmp<-data.frame(rawtext = gender, coded = codes[i]) #indexed by codes
+tmp
+# rawtext  coded
+# 1       M   male
+# 2   male    male
+# 3  Female female
+# 4    fem. female
+
+###################################
+#agrep() fuzzy matching
+agrep('commu', water_train$funder, value=TRUE)
+
+#########################
+#another distance method:
+library(stringdist)
+stringdist("abc", "bac") #considers transposition
+## [1] 1
+i <- amatch(gender,codes,maxDist=4)
+data.frame(
+  rawtext = gender
+  , code = codes[i]
+)
+
+## rawtext code
+## 1 M male
+## 2 male male
+## 3 Female female
+## 4 fem. female
+
+
+#string replacement
+gsub(' ')
+#date extraction
+library(lubridate)
+month(x)
+year(x)
+
+###############################################
+#Missingnes
+mean(age, na.rm = TRUE)
+complete.cases(person)
+persons_complete <- na.omit(person)
+
+x[is.na(x)] <- mean(x, na.rm = TRUE)
+library(Hmisc)
+x <- impute(x, fun = mean) # mean imputation
+x <- impute(x, fun = median) # median imputation
+is.imputed(x)
+
+
+####################################################
+library(Hmisc)
+cut(data$col, seq(0,100, by=10)) #breaks the data up by the range it 
+#falls into, in this example: whether the observation is between 0 and 10, 10 and 20, 20 and 30, and so on
+cut2(data$col, g=6) #return a factor variable with 6 groups
+cut2(data$col, m=25) #return a factor variable with at least 25 
+#observations in each group
+
+#####################################################
+sub() #replace the first occurrence
+gsub() #replaces all occurrences
+
+#####################################################
+#####################################################
+library(dplyr)
+
+#filter by row elements
+filter(df, color == 'black' & color == 'blue')
+filter(df, value %in% c(1, 2, 3))
+filter(df, value %in% c(1, 4) | color = 'black')
+
+#filter by column
+select(df, COLOR = color)
+select(df, -color)
+select(df, starts_with('c', ignore.case = T))
+select(df, ends_with('c', ignore.case = T))
+select(df, contains('c', ignore.case = T)) #works only for single string
+select(df, matches(x, ignore.case =T)) #eg. select(df, matches('m|ar'))
+select(df, one_of(name_1, name_2...))
+
+#sorting:
+arrange(df, desc(value))
+
+#alter df:
+mutate(df, double = value*2, quadruple = 4 * value)
+
+#generate new df:
+transmute(df, double = value*2, quadruple = 4 * value)
+
+#summarise
+summarise(df, total = sum(valuem na.rm = T), 
+              avg = mean(value), 
+              min = min(value),
+              max = max(value)
+              sd = sd(value),
+              median = median(value), 
+              count = n(), 
+              n_distinct = n_distinct(value), 
+              first = first(value), 
+              last = last(value), 
+              4th = nth(value, 4))
+
+#join
+inner_join(x, y, by = c("name", "sex"))
+left_join(x, y, by = 'name')
+right_join(x, y, by = 'name')
+full_join(x, y, by = 'name')
+semi_join(x, y, by = 'name') #identical to inner_join, but only retains left table
+anti_join(x, y, by = 'name') #opposite of semi_join
+
+#group_by
+by_color = group_by(df, color)
+summarise(by_color, total = sum(value))
+#by two grouping criteria:
+group_by(bnames2, name, year)
+
+#pipe
+bnames2 %>% group_by(name, year) %>% summarise(total = sum(n))
+
+#sample
+sample_n(airquality, size = 10)
+sample_frac(airquality, size = 0.1)
+
+
+#####note, in order to pass self defined functions, need to use SE version:
+simpleFunction <- function(dataset, col_name){
+  require("dplyr")
+  dataset %>% 
+    group_by_(col_name) %>%
+    summarise(mean_speed = mean(speed)) -> dataset
+  return(dataset)
+}
+
+
+
+###################################
+#reshaping data
+library(reshape2)
+##wide to long:
+molten.messy <- melt(messy, 
+                     variable.name = "key",
+                     value.names = "value",
+                     id.vars = c("id", "trt"))
+#column split
+res.tidy <- cbind(molten.messy[1:2], 
+                  colsplit(molten.messy[, 3], "\.", c("location", "time")),
+                  molten.messy[4])
+
+
+
