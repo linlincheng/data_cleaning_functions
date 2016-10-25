@@ -1,0 +1,419 @@
+###################################################
+#Machine Learning Codes
+#Linlin Cheng
+###################################################
+Content:
+  1.Missingness & KNN
+  2.Statistical Tests
+  3.Linear Models
+  4.Logit Models
+  5.PCA
+  6.Cluster
+  7.Trees
+  8.SVM
+  9.NN
+  10.Association Rules
+  11.Naive Bayes
+  12.Time Series
+###################################################
+###################################################
+##1.Missingness & KNN
+library(VIM)
+aggr(sleep) #missginess plot
+
+library(mice)
+md.pattern(sleep) #missingness pattern (table)
+
+##Imputation
+library(Hmisc)
+#mean, random:
+imputed.x2 = impute(missing.data$x2, mean) #Specifically calling the x2 variable.
+imputed.x2 = impute(missing.data$x2, "random") #Simple random imputation using the
+#KNN:
+imputed.1nn = kNN(missing.data, k = 1) #missing.data as the original dataframe
+                                       #k = sqrt(n)
+#using specific distanc mmeasures:
+library(kknn) 
+#Separating the complete and missing observations for use in the kknn() function.
+complete = iris.example[-missing.vector, ]
+missing = iris.example[missing.vector, -3]
+#Distance corresponds to the Minkowski power.
+iris.euclidean = kknn(Species ~ ., complete, missing, k = 12, distance = 2)
+summary(iris.euclidean)
+
+###################################################
+###################################################
+#2. Statistical Tests
+#regular for estimated mean:
+t.test(heights, alternative = 'greater')
+#two sample for comparing sample means: (may be used for A/B testing, assume equal variance!!)
+t.test(SAT.Spring, SAT.Fall, alternative = "two.sided")
+#f.test for variance:
+var.test(SAT.Fall, SAT.Spring, alternative = "two.sided")
+#one-way anova for comparing group means: (may be used for A/B testing)
+summary(aov(Weight.Loss ~ Category))
+#chi-square test for categorical independence:
+chisq.test(quiz.data)
+
+###################################################
+###################################################
+#3.Linear Models:
+
+#normality check:
+qqnorm(model$residuals)
+qqline(model$residuals)
+plot(model) #produces three plots with Enter
+
+#Kolmogorov-Smirnov test: whether x and y follow the same dist.
+ks.test(x, y)
+#shapiro test:
+shapiro.test(x)
+#Anderson-Darling test:
+library(nortest)
+ad.test(x)
+
+#transformation:
+library(car)
+boxCox(model) #plot the max likelihood for different lambdas
+lambda = bc$x[which(bc$y == max(bc$y))]
+
+######
+#Multiple linear regressions:
+model = lm(Life.Exp ~ ., data = states)
+library(car)
+influencePlot(model) #influence poinr
+vif(model)   #VIF
+avPlots(model) #added variable plot
+anova(model2, model) #F-test for comparing two models
+
+
+#AIC for model accuracy:
+AIC(model.full,    #Model with all variables.
+    model2,        #Model with all variables EXCEPT Illiteracy.
+    model.reduced)
+#BIC for model simplicity :
+BIC(model.full,    #Model with all variables.
+    model2,        #Model with all variables EXCEPT Illiteracy.
+    model.reduced)
+
+#step function for variable selection:
+model.empty = lm(Life.Exp ~ 1, data = states) #The model with an intercept ONLY.
+model.full = lm(Life.Exp ~ ., data = states)
+
+forwardAIC = step(model.empty, scope, direction = "forward", k = 2)
+backwardAIC = step(model.full, scope, direction = "backward", k = 2)
+bothAIC.empty = step(model.empty, scope, direction = "both", k = 2)
+
+#adding quadratic term:
+
+model.quadratic = lm(Test.Score ~ Hours.Studied + I(Hours.Studied^2), data = tests)
+#use * for both individual and products
+#use : for product
+#use I() for own squared, etc
+
+###################################################
+###################################################
+##4.Logit models:
+#logit model fit:
+logit.overall = glm(admit ~ gre + gpa + rank,
+                    family = "binomial",
+                    data = GradSchools)
+#comparing models: using Chi-square
+pchisq(reduced.deviance - full.deviance,
+       reduced.df - full.df,
+       lower.tail = FALSE)
+#comparing using usual pseudo-R-squared:
+anova(logit.norank, logit.overall, test = "Chisq")
+
+#prediction:
+predict(logit.overall, newdata, type = "response")
+
+#comparing prediction with true observations:
+table(truth = GradSchools$admit, prediction = admitted.predicted)
+
+###Lasso, d= 1 and Ridge d=2:
+#alpha = 0, ridge, alpha = 1, lasso (can be in between for elastic net)
+library(glmnet)
+set.seed(0)
+set.seed(0)
+train = sample(1:nrow(x), 7*nrow(x)/10)
+test = (-train)
+y.test = y[test]
+
+
+grid = 10^seq(5, -2, length = 100)
+#use cv to find out best model:
+cv.ridge.out = cv.glmnet(x[train, ], y[train],
+                         lambda = grid, alpha = 0, nfolds = 10)
+plot(cv.ridge.out, main = "Ridge Regression\n")
+bestlambda.ridge = cv.ridge.out$lambda.min
+bestlambda.ridge
+
+#plug lambda from cv to glmnet and predict using the model:
+ridge.out = glmnet(x, y, alpha = 0)
+ridge.bestlambda = predict(ridge.out, s = bestlambda.ridge, newx = x)
+
+###################################################
+###################################################
+##5.PCA
+library(psych)
+principal() #Performs principal components analysis with optional rotation.
+fa.parallel() #Creates scree plots with parallell analyses for choosing K.
+factor.plot() #Visualizes the principal component loadings.
+
+#scree plot for choosing number of PCs:
+fa.parallel(iris_meas, #The data in question.
+            fa = "pc", #Display the eigenvalues for PCA.
+            n.iter = 100) #Number of simulated analyses to perform.
+abline(h = 1)
+
+#PC:
+pc_bodies = principal(bodies, #The data in question.
+                      nfactors = 2, #The number of PCs to extract.
+                      rotate = "none")
+#-PC columns contain loadings; correlations of the observed variables with the PCs.
+#-h2 column displays the component comunalities; amount of variance explained by
+# the components.
+#-u2 column is the uniqueness (1 - h2); amount of varaince NOT explained by the
+# components.
+#-SS loadings row shows the eigenvalues of the PCs; the standardized varaince.
+#-Proportion/Cumulative Var row shows the variance explained by each PC.
+#-Proportion Explained/Cumulative Proportion row considers only the selected PCs.
+
+#plotting PCs: (may only be applicable for 2?)
+factor.plot(pc_bodies,
+            labels = colnames(bodies)) #Add variable names to the plot.
+
+###################################################
+###################################################
+##6. Cluster Analysis:
+#k-means:
+km.iris = kmeans(iris.scale, centers = 3)
+
+#scree-plot function:
+wssplot = function(data, nc = 15, seed = 0) {
+  #wss = (nrow(data) - 1) * sum(apply(data, 2, var))
+  wss = c()
+  for (i in 2:nc) {
+    set.seed(seed)
+    wss[i] = sum(kmeans(data, centers = i, iter.max = 100, nstart = 100)$withinss)
+  }
+  plot(1:nc, wss, type = "b",
+       xlab = "Number of Clusters",
+       ylab = "Within-Cluster Variance",
+       main = "Scree Plot for the K-Means Procedure")
+}
+
+#hierachical clustering:
+nutrient.scaled = as.data.frame(scale(nutrient))
+d = dist(nutrient.scaled)
+
+fit.single = hclust(d, method = "single")
+fit.complete = hclust(d, method = "complete")
+fit.average = hclust(d, method = "average")
+
+
+plot(fit.single, hang = -1, main = "Dendrogram of Single Linkage")
+
+#Cut the dendrogram into groups of data.
+clusters.average = cutree(fit.average, k = 5)
+clusters.average
+
+#Viewing the groups of data.
+table(clusters.average)
+
+#Aggregating the original data by the cluster assignments.
+aggregate(nutrient, by = list(cluster = clusters.average), median)
+
+#Aggregating the scaled data by the cluster assignments.
+aggregate(nutrient.scaled, by = list(cluster = clusters.average), median)
+
+
+###################################################
+###################################################
+##7.Trees
+
+##tree
+library(tree)
+tree.carseats = tree(High ~ . - Sales, split = "gini", data = Carseats) #if remove split = "gini", by default regression tree
+summary(tree.carseats)
+#plot
+plot(tree.carseats)
+text(tree.carseats, pretty = 0) #Yields category names instead of dummy variables.
+#prediction
+tree.pred = predict(tree.carseats, Carseats.test, type = "class")
+#cross-validation
+cv.carseats = cv.tree(tree.carseats, FUN = prune.misclass)
+#pruning
+prune.carseats = prune.misclass(tree.carseats, best = 4)
+
+##random forest
+library(randomForest)
+rf.boston = randomForest(medv ~ ., data = Boston, subset = train, importance = TRUE)
+
+###set number of draws:
+oob.err = numeric(13)
+for (mtry in 1:13) {
+  fit = randomForest(medv ~ ., data = Boston[train, ], mtry = mtry)
+  oob.err[mtry] = fit$mse[500]
+  cat("We're performing iteration", mtry, "\n")
+}
+
+#Visualizing the OOB error.
+plot(1:13, oob.err, pch = 16, type = "b",
+     xlab = "Variables Considered at Each Split",
+     ylab = "OOB Mean Squared Error",
+     main = "Random Forest OOB Error Rates\nby # of Variables")
+
+#Can visualize a variable importance plot.
+importance(rf.boston)
+varImpPlot(rf.boston)
+
+#Boosted Trees:
+library(gbm)
+
+#Fitting 10,000 trees with a depth of 4.
+set.seed(0)
+boost.boston = gbm(medv ~ ., data = Boston[train, ],
+                   distribution = "gaussian",
+                   n.trees = 10000,
+                   interaction.depth = 4)
+
+#Inspecting the relative influence.
+par(mfrow = c(1, 1))
+summary(boost.boston)
+
+
+###################################################
+###################################################
+##8. SVM
+#Need to set label to (-1, 1)
+library(e1071)
+#note, we can just use caret functions which also offers cross-validation
+set.seed(0)
+cv.svm.radial = tune(svm,
+                     y ~ .,
+                     data = nonlinear[train.index, ],
+                     kernel = "radial",
+                     ranges = list(cost = 10^(seq(-1, 1.5, length = 20)),
+                                   gamma = 10^(seq(-2, 1, length = 20))))
+plot(svm.best.nonlinear, nonlinear)
+summary(svm.best.nonlinear)
+svm.best.nonlinear$index
+
+
+###################################################
+###################################################
+##9. NN
+library(neuralnet)
+#need to normalize data:
+normalize = function(x) { 
+  return((x - min(x)) / (max(x) - min(x)))
+}
+concrete_norm = as.data.frame(lapply(concrete, normalize))
+set.seed(0)
+concrete_model = neuralnet(strength ~ cement + slag +     #Cannot use the shorthand
+                             ash + water + superplastic + #dot (.) notation.
+                             coarseagg + fineagg + age,
+                           hidden = c(15, 3, 4), #Default number of hidden neurons.
+                           data = concrete_train)
+plot(concrete_model)
+#prediction using compute():
+model_results = compute(concrete_model, concrete_test[, 1:8])
+predicted_strength = model_results$net.result
+
+
+###################################################
+###################################################
+##10. Association Rules
+library(arules)
+groceries = read.transactions("[13] Groceries.csv", sep = ",")
+summary(groceries)
+#Inspecting the distribution of transaction size.
+size(groceries)
+hist(size(groceries))
+#Using the itemFrequency() function to look at the actual contents of the sparse
+#matrix. In particular, looking at each item.
+itemFrequency(groceries[, 1:5], type = "relative") #Default
+itemFrequency(groceries[, 1:5], type = "absolute")
+
+#Using the itemFrequencyPlot() function to visualize item frequencies.
+itemFrequencyPlot(groceries)
+itemFrequencyPlot(groceries, support = 0.1)
+itemFrequencyPlot(groceries, topN = 20)
+
+#Using the apriori() function to look for association rules using the Apriori
+#algorithm.
+apriori(groceries,
+        parameter = list(support = .1,     #Default minimum support.
+                         confidence = .8,  #Default minimum confidence.
+                         minlen = 1,       #Default minimum rule length.
+                         maxlen = 10))     #Default maximum rule length.
+
+#Creating some rules by lowering the support and confidence.
+groceryrules = apriori(groceries,
+                       parameter = list(support = 0.006,
+                                        confidence = 0.25,
+                                        minlen = 2))
+
+#Investigating summary information about the rule object.
+groceryrules
+class(groceryrules)
+summary(groceryrules)
+
+#Inspecting specific information about rules.
+inspect(groceryrules[1:5])
+
+#Sorting the rules by various metrics.
+inspect(sort(groceryrules, by = "support")[1:5])
+inspect(sort(groceryrules, by = "confidence")[1:5])
+inspect(sort(groceryrules, by = "lift")[1:5])
+
+#Finding subsets of rules based on a particular item.
+berryrules = subset(groceryrules, items %in% "berries")
+inspect(berryrules)
+
+herbrules = subset(groceryrules, items %in% "herbs")
+inspect(herbrules)
+#lhs        rhs                support     confidence lift    
+# 3 {herbs} => {root vegetables}  0.007015760 0.43125    3.956477
+# 4 {herbs} => {other vegetables} 0.007727504 0.47500    2.454874
+# 5 {herbs} => {whole milk}       0.007727504 0.47500    1.858983
+###################################################
+###################################################
+##11.Naive Bayes
+library(e1071)
+sms_classifier = naiveBayes(sms_train, sms_train_labels, laplace = 1)
+sms_classifier #Yields a list of tables, one for each predictor variable. For
+#each variable and attribute level, yields the conditional probabilities
+#given the target class.
+
+#Evaluating the model performance by predicting the test observations.
+sms_test_pred = predict(sms_classifier, sms_test)
+sms_test_pred
+
+###################################################
+###################################################
+##12. Time Series
+library(forecast)
+library(tseries)
+plot(Nile, main = "Annual Flow of the Nile River")
+ndiffs(Nile) #Estimates the number of differences required to make a given
+#time series stationary; returns d = 1.
+dNile = diff(Nile, differences = 1) #Returns lagged and iterated differences;
+#default lag and differences are both 1.
+#Conducting the Augmented Dickey-Fuller Test for stationarity:
+adf.test(dNile)
+#find out ar and ma components:
+Acf(dNile)
+Pacf(dNile)
+initial.fit = Arima(Nile, order = c(2, 1, 1))
+
+
+library(fpp)
+#Applying seasonal decomposition; setting s.window to "period" ensures that
+#the seasonal effects will be the same across years.
+seasonal.decomposition = stl(log.AirPassengers, s.window = "period")
+plot(seasonal.decomposition, main = "Seasonal Decomposition of Airline Data")
+
+
