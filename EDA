@@ -29,3 +29,6 @@ coord_polar()
 
 ##bar cahrt
 geom_bar()
+#example: water_train is a data frame, extraction_type_class is a categorical column variable 
+ggplot(data = water_train, aes(x = extraction_type_class)) + geom_bar(aes
+                                                                      (fill = label)) + scale_x_discrete(limits = position)
