@@ -22,7 +22,8 @@ MyTrainControl=trainControl(
   summaryFunction=twoClassSummary
 )
 
-model <- train(FL,data=trainset,method='glmnet',
+model <- train(trainDF[,predictorsNames], trainDF[,outcomeName], method='glmnet', 
+               #note: first input should only be the design matrix, second input the factored target at level 0, 1 (2, 3... for multiclass)
                metric = "ROC",
                tuneGrid = expand.grid(.alpha=c(0,1),.lambda=seq(0,0.05,by=0.01)),
                trControl=MyTrainControl)
@@ -224,9 +225,15 @@ plot(rf_random)
 ###
 ################################################
 ################################################
+#Other Useful Caret functions: 
+###create dummies:
+titanicDummy <- dummyVars("~.",data=titanicDF, fullRank=F) #set fullRank = T to avoid fitting one to every level
+
 ###Model Comparison
 cvValues <- resamples(list(CART = rpartTune, SVM = svmTune, C5.0 = c5Tune))
 summary(cvValues)
 xyplot(cvValues, metric = "ROC")
 dotplot(cvValues, metric = "ROC")
+
+
 
